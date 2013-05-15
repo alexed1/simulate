@@ -7,16 +7,46 @@ require 'debugger'
 def init_profiles
 
   #load all the profiles
-  profiles = []
+  profiles = {}
+
   Dir.foreach('../profiles') do |item|
   	next if item == '.' or item == '..'
   	profile = YAML.load_file('../profiles/' + item)
   	validate_profile(profile, item)
-  	profiles << profile
+    #extract the name from the yaml and use it as the key for this profile
+    profiles[profile['name']] = profile
   end
-  #puts profiles.inspect
+  return profiles
+end
+
+
+
+
+#actors are generated using the profiles as templates, and using the Load List from the Simulation
+#load list comes in from the yaml as an array of arrays
+#the first value of each array is the period that particular packet of actors start their leases
+def init_actors(load_list)
+  load_list.each { |period_list|
+    period = period_list.shift
+    #start a counter to generate ids
+    id = 1
+    period_list.each { |actor|
+      actor_id=period.to_s + "-" + id.to_s
+      id += 1
+      actor_profile = $PROFILES.select {|k,v|
+        k == actor
+      }
+      actor_obj = Actor.new(actor_profile, actor_id)
+      
+
+    }
+
+  }
 
 end
+
+
+
 
 
 def init_simulations
@@ -26,6 +56,7 @@ def init_simulations
     next if item == '.' or item == '..'
     simulation = YAML.load_file('../simulations/' + item)
     validate_simulation(simulation, item)
+    actors = init_actors(simulation['load_list'])
     sim_obj = Simulation.new(simulation)
     simulations << sim_obj
   end
@@ -64,6 +95,6 @@ end
 
 
 
-init_profiles
+$PROFILES = init_profiles
 init_simulations
 

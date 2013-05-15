@@ -1,0 +1,9 @@
+config_type: simulation
+name: main_simul
+iterations: 24
+lease_periods: 12
+target_apr: 200 
+residual_value: 30
+load_list: 
+- [1, "A+", "low_grade_1"]
+- [2, "low_grade_1", "low_grade_1", "A+"]
