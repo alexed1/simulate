@@ -1,0 +1,16 @@
+config_type: profile
+name: low_grade_1
+average_item_price: 1000
+pct_complete_1_payment: 10 
+pct_complete_2_payment: 10 
+pct_complete_3_payment: 15 
+pct_complete_4_payment: 20
+pct_complete_5_payment: 10
+pct_complete_6_payment: 5 
+pct_complete_7_payment: 5
+pct_complete_8_payment: 5
+pct_complete_9_payment: 5 
+pct_complete_10_payment: 5
+pct_complete_11_payment: 5
+pct_complete_12_payment: 5
+pct_theft: 30
