@@ -1,6 +1,7 @@
 require 'yaml'
 require 'debugger'
 
+
 #load all of the profiles files
 
 def init_profiles
@@ -13,7 +14,7 @@ def init_profiles
   	validate_profile(profile, item)
   	profiles << profile
   end
-  puts profiles.inspect
+  #puts profiles.inspect
 
 end
 
@@ -25,9 +26,10 @@ def init_simulations
     next if item == '.' or item == '..'
     simulation = YAML.load_file('../simulations/' + item)
     validate_simulation(simulation, item)
-    simulations << simulation
+    sim_obj = Simulation.new(simulation)
+    simulations << sim_obj
   end
-  puts simulations.inspect
+  #puts simulations.inspect
 end
 
 def validate_profile(profile, filename)
