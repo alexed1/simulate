@@ -28,9 +28,9 @@ class Actor
   #the profile carries a liklihood for there to be a theft
 	def calc_theft(percent)
 		if rand > (percent.to_f/100)
-			return true
-		else
 			return false
+		else
+			return true
 		end
 	end
 
@@ -57,35 +57,41 @@ class Actor
 		debug("calc'ing cash flows for actor #{self.name}")
 		row_output = ""
 		i = 1
-		
+	
+
 		simulation.simulation_periods.times do |period|
 			period +=1
+			cur_flow = 0
+			
 			if @start_period > period
 				#actor hasn't executed their lease yet
 				@payments[period] = 0
-			elsif period > (@start_period + @payment_count)
+			
+			elsif period >= (@start_period + @payment_count)
 				#actor lease is complete
 				@payments[period] = 0
+			
 			else
 				#there's an actual payment to be calculated
-				payment = @monthly_payment
+				cur_flow = @monthly_payment
 				if period == @start_period
 					#this is the first period of the lease, so subtract the total lease price to represent our outlay
-					payment -= @lease_price
+					cur_flow -= @lease_price
 				end
-				if period == @start_period + @payment_count
+				if period == @start_period + @payment_count - 1
 					#this is the last period of the lease, add in residual value if appropriate
-					if !@theft
+					if !@theft_occurs
 						debug("adding residual value back in")
-						payment += simulation.residual_value* 0.01 * @lease_price
-
+						#if payment count is less than 3 we override the theft calc and assume theft is true, because we don't allow returns for less than 3 periods.
+						cur_flow += simulation.residual_value* 0.01 * @lease_price unless @payment_count <3
 					end
 				end
-				row_output = row_output + truncate(payment).to_s + "\t"
-				@payments[period] = payment
-
 			end
-				
+
+
+			row_output = row_output + truncate(cur_flow).to_s + "\t"
+			@payments[period] = cur_flow
+			
 		end
 		return row_output
 
