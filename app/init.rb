@@ -1,5 +1,5 @@
 require 'yaml'
-require 'debugger'
+
 
 
 #load all of the profiles files
@@ -12,9 +12,13 @@ def init_profiles
   Dir.foreach('../profiles') do |item|
   	next if item == '.' or item == '..'
   	profile = YAML.load_file('../profiles/' + item)
-  	validate_profile(profile, item)
+  	pay_period_percentages = validate_profile(profile, item)
     #extract the name from the yaml and use it as the key for this profile
-    profiles[profile['name']] = profile
+    main_key = profile['name']
+    profiles[main_key] = profile
+    #insert the pay_period percentages array into the profile
+    profiles[main_key]['pay_period_percentages'] = pay_period_percentages
+
   end
   return profiles
 end
@@ -66,37 +70,34 @@ def init_simulations
 end
 
 def validate_profile(profile, filename)
-	puts ""
-  puts "validating profile" + profile['name']
+  puts "validating profile: " + profile['name']
   raise "all entries must be config_type = profile" if profile['config_type'] != 'profile'
-  
-  #make sure the percentages add up to 1
+  raise "theft percentage must be between 0 and 100" if profile['pct_theft'].to_i > 100 or profile['pct_theft'].to_i < 0
+  raise "item price must be between 25 and 2000" if profile["average_item_price"].to_i > 2000 or profile["average_item_price"].to_i < 25
+  raise "we don't allow the filename and the 'name' key to have different values, because misery will result" if filename != profile['name'] + '.yml'
+
+  #make sure the percentages add up to 1, and store them all in a convenient array while we're at it
   total = 0
+  pay_period_probabilities = []
   $LOAN_PERIODS.times do |i|
     key = 'pct_complete_' + (i+1).to_s + '_payment'
     total += profile[key].to_i
+    pay_period_probabilities << total
   end
 
   if total != 100 
     raise "the collected set of percentage completes must add up to 100"
   end
 
-  raise "theft percentage must be between 0 and 100" if profile['pct_theft'].to_i > 100 or profile['pct_theft'].to_i < 0
-
-  raise "item price must be between 25 and 2000" if profile["average_item_price"].to_i > 2000 or profile["average_item_price"].to_i < 25
-
-  raise "we don't allow the filename and the 'name' key to have different values, because misery will result" if filename != profile['name'] + '.yml'
+  return pay_period_probabilities
 end
 
 def validate_simulation(simulation, filename)
-if filename != simulation['name'] + '.yml'
+  if filename != simulation['name'] + '.yml'
     raise "we don't allow the filename and the 'name' key to have different values, because misery will result" 
+  end
+   #TODO add error checking
 end
- #TODO add error checking
-end
 
 
-
-$PROFILES = init_profiles
-init_simulations
 
