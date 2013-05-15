@@ -25,19 +25,21 @@ end
 #actors are generated using the profiles as templates, and using the Load List from the Simulation
 #load list comes in from the yaml as an array of arrays
 #the first value of each array is the period that particular packet of actors start their leases
-def init_actors(load_list)
+def init_actors(load_list, simulation)
   load_list.each { |period_list|
     period = period_list.shift
     #start a counter to generate ids
     id = 1
     period_list.each { |actor|
+      #generate a unique ID
       actor_id=period.to_s + "-" + id.to_s
       id += 1
+      #select the appropriate template from the set of available profiles
       actor_profile = $PROFILES.select {|k,v|
         k == actor
       }
-      actor_obj = Actor.new(actor_profile, actor_id)
-      
+      actor_obj = Actor.new(actor_profile[actor], actor_id, simulation, period)
+     
 
     }
 
@@ -56,8 +58,8 @@ def init_simulations
     next if item == '.' or item == '..'
     simulation = YAML.load_file('../simulations/' + item)
     validate_simulation(simulation, item)
-    actors = init_actors(simulation['load_list'])
     sim_obj = Simulation.new(simulation)
+    actors = init_actors(simulation['load_list'], sim_obj)
     simulations << sim_obj
   end
   #puts simulations.inspect
@@ -70,7 +72,7 @@ def validate_profile(profile, filename)
   
   #make sure the percentages add up to 1
   total = 0
-  12.times do |i|
+  $LOAN_PERIODS.times do |i|
     key = 'pct_complete_' + (i+1).to_s + '_payment'
     total += profile[key].to_i
   end
