@@ -12,10 +12,14 @@ def init_profiles
   Dir.foreach('../profiles') do |item|
   	next if item == '.' or item == '..'
   	profile = YAML.load_file('../profiles/' + item)
+
+    #the validation process has a side effect of returning a composed array of the pay period percentages
   	pay_period_percentages = validate_profile(profile, item)
+    
     #extract the name from the yaml and use it as the key for this profile
     main_key = profile['name']
     profiles[main_key] = profile
+    
     #insert the pay_period percentages array into the profile
     profiles[main_key]['pay_period_percentages'] = pay_period_percentages
 
@@ -24,41 +28,8 @@ def init_profiles
 end
 
 
-
-
-#actors are generated using the profiles as templates, and using the Load List from the Simulation
-#load list comes in from the yaml as an array of arrays
-#the first value of each array is the period that particular packet of actors start their leases
-def init_actors(load_list, simulation)
-  actors = []
-  load_list.each { |period_list|
-    period = period_list.shift
-    #start a counter to generate ids
-    id = 1
-    period_list.each { |actor|
-      #generate a unique ID
-      actor_id=period.to_s + "-" + id.to_s
-      id += 1
-      #select the appropriate template from the set of available profiles
-      actor_profile = $PROFILES.select {|k,v|
-        k == actor
-      }
-      actors <<  Actor.new(actor_profile[actor], actor_id, simulation, period)
-     
-
-    }
-
-  }
-  return actors
-
-end
-
-
-
-
-
 def init_simulations
-  #load all the simulations
+  #load all the simulations and create objects out of them
   simulations = []
   actors = []
   Dir.foreach('../simulations') do |item|
@@ -70,8 +41,34 @@ def init_simulations
     simulations << sim_obj
   end
   return actors, simulations
-  #puts simulations.inspect
 end
+
+#actor objects are generated using the profiles as templates, and using the Load List from the Simulation
+#load list comes in from the yaml as an array of arrays
+#the first value of each array is the period that particular packet of actors start their leases
+def init_actors(load_list, simulation)
+  actors = []
+  load_list.each { |period_list|
+    period = period_list.shift
+    #start a counter to generate ids
+    id = 1
+    period_list.each { |actor|
+      #generate a unique ID
+      actor_id="_" + period.to_s + "-" + id.to_s
+      id += 1
+      #select the appropriate template from the set of available profiles
+      actor_profile = $PROFILES.select {|k,v|
+        k == actor
+      }
+      actors <<  Actor.new(actor_profile[actor], actor_id, simulation, period)
+    }
+
+  }
+  return actors
+
+end
+
+
 
 def validate_profile(profile, filename)
   puts "validating profile: " + profile['name']
@@ -84,7 +81,8 @@ def validate_profile(profile, filename)
   total = 0
   pay_period_probabilities = []
   $LOAN_PERIODS.times do |i|
-    key = 'pct_complete_' + (i+1).to_s + '_payment'
+    i+=1 #all array operations ignore index 0 to match things up nicely with the periods
+    key = 'pct_complete_' + (i).to_s + '_payment'
     total += profile[key].to_i
     pay_period_probabilities << total
   end

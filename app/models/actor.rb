@@ -12,13 +12,8 @@ class Actor
  		@lease_price = params["average_item_price"].to_f
  		@name = params["name"]
  		@monthly_payment = calc_monthly_payment(simulation)
- 		#@payments = {}
  		@cash_flows = calc_cash_flows(simulation)
  		
- 		#puts "theft is #{theft_occurs}"
- 		#puts "payment count is #{payment_count}"
- 		#puts "cash flows are:"
- 		#puts @cash_flows
 	end 
 
 	def calc_monthly_payment (simulation)
@@ -36,10 +31,10 @@ class Actor
 
 	def calc_payment_count(params)
 		 i = rand(100)
-		 array = params['pay_period_percentages']
-		 raise "pay period percentages have to be ordered. something's wrong" if array != array.sort
+		 period_percentages_list = params['pay_period_percentages']
+		 raise "pay period percentages have to be ordered. something's wrong" if period_percentages_list != period_percentages_list.sort
 		 position = 0
-		 array.each { |period|
+		 period_percentages_list.each { |period|
 		 	 if (i < period)
 		 	 		return position+1
 		 	 else
@@ -60,8 +55,8 @@ class Actor
 	
 
 		sim.simulation_periods.times do |period|
-			period +=1
-			cur_flow = 0
+			period +=1  #all array operations ignore index 0 to match things up nicely with the periods
+			cur_flow = 0  #accumulates the cash flows for a given period
 			
 			if @start_period > period
 				#actor hasn't executed their lease yet
@@ -70,21 +65,25 @@ class Actor
 				#actor lease is complete
 			
 			else
-				#there's an actual payment to be calculated
+				#yay! there's an actual payment to be calculated
+
+				#first, if this is the start of the lease, subtract the total lease price to represent our outlay
+				if period == @start_period
+					cur_flow -= @lease_price
+					update_warehouse("capital_deployed", @lease_price, sim, period )
+				end
+
+				#next, the basic monthly payment, which flows in to the company
 				cur_flow = @monthly_payment
 				update_warehouse("payments_received", @monthly_payment, sim, period )
 
-				if period == @start_period
-					#this is the first period of the lease, so subtract the total lease price to represent our outlay
-					cur_flow -= @lease_price
-					update_warehouse("capital_deployed", @lease_price, sim, period )
-			
-				end
+				#finally, if this is the end of the payments on this lease, either because the lessee took ownership, or because they stopped
+				#making payments, calculate the residual value of the product, if we got it back
 				if period == @start_period + @payment_count - 1
-					#this is the last payment we're getting. Add in residual value if no theft and no ownership change
-					if !@theft_occurs && @payment_count < 12
+					if !@theft_occurs && @payment_count < $LOAN_PERIODS
 						debug("adding residual value back in")
 						residual_val = sim.residual_value* 0.01 * @lease_price
+						
 						#if payment count is less than 3 we override the theft calc and assume theft is true, because we don't allow returns for less than 3 periods.
 						if @payment_count >= 3
 							cur_flow += residual_val  
@@ -95,39 +94,32 @@ class Actor
 
 			end
 			cash_flows << truncate(cur_flow).to_s + "\t"
-			#@payments[period] = cur_flow	
 		end
 		calc_cumulatives(sim)
 
 		return cash_flows
 	end
 
-
+	#this method calculates various types of data we want to analyze.
 	def update_warehouse(event, amount, sim, period)
 		amount = truncate(amount)
-		period -= 1
+		#period -= 1
 		case event
 		  when "payments_received" 
 				#add amount this to the total payments received this period
 				sim.aggregates['payments_received'][period] += amount
 				sim.aggregates['period_cash_flow'][period] += amount
-				#sim.aggregates['cumulative_cash_flow'][period] += amount
-				#puts "added #{amount} to cumulative cash flow, period #{period}"
+		  
 		  when "capital_deployed"  
 				#add this to the total capital deployed this period
 				sim.aggregates['capital_deployed'][period] += amount
 				sim.aggregates['period_cash_flow'][period] -= amount
-				#sim.aggregates['cumulative_cash_flow'][period] -= amount
-				#puts "subtracted #{amount} to cumulative cash flow, period #{period}"
+		  
 		  when "residual_value_tangible" 
 				#add this to the total capital deployed this period
 				sim.aggregates['residual_value_tangible'][period] += amount
 				sim.aggregates['period_cash_flow'][period] += amount
-				#sim.aggregates['cumulative_cash_flow'][period] += amount
-				#puts "added #{amount} to cumulative cash flow, period #{period}"
-			#when "update_cumulatives"
-				#sim.aggregates['cumulative_cash_flow'][period+1] = sim.aggregates['cumulative_cash_flow'][period]
-				#puts "copied a cum value of #{sim.aggregates['cumulative_cash_flow'][period]}" 
+		  
 		  else raise "unsupported warehouse event"
 		end
 	end
@@ -135,13 +127,8 @@ class Actor
 	def calc_cumulatives(sim)
 		#sim.aggregates['cumulative_cash_flow'][0]=0
 		sim.simulation_periods.times do |period|
-			period += 1
-			if period == 1
-				#debugger
-				#TODO recalibrate so that everything works from period 1 and ignores the 0 position of arrays.
-			end 
+			period += 1  #all array operations ignore index 0 to match things up nicely with the periods
 			sim.aggregates['cumulative_cash_flow'][period] = truncate( sim.aggregates['cumulative_cash_flow'][period-1] + sim.aggregates['period_cash_flow'][period])
-
 		end
 
 	end
