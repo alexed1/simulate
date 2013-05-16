@@ -92,30 +92,55 @@ class Actor
 						end
 					end
 				end
+
 			end
 			cash_flows << truncate(cur_flow).to_s + "\t"
 			#@payments[period] = cur_flow	
 		end
+		calc_cumulatives(sim)
+
 		return cash_flows
 	end
 
 
 	def update_warehouse(event, amount, sim, period)
+		amount = truncate(amount)
+		period -= 1
 		case event
 		  when "payments_received" 
 				#add amount this to the total payments received this period
 				sim.aggregates['payments_received'][period] += amount
 				sim.aggregates['period_cash_flow'][period] += amount
+				#sim.aggregates['cumulative_cash_flow'][period] += amount
+				#puts "added #{amount} to cumulative cash flow, period #{period}"
 		  when "capital_deployed"  
 				#add this to the total capital deployed this period
 				sim.aggregates['capital_deployed'][period] += amount
 				sim.aggregates['period_cash_flow'][period] -= amount
+				#sim.aggregates['cumulative_cash_flow'][period] -= amount
+				#puts "subtracted #{amount} to cumulative cash flow, period #{period}"
 		  when "residual_value_tangible" 
 				#add this to the total capital deployed this period
 				sim.aggregates['residual_value_tangible'][period] += amount
 				sim.aggregates['period_cash_flow'][period] += amount
+				#sim.aggregates['cumulative_cash_flow'][period] += amount
+				#puts "added #{amount} to cumulative cash flow, period #{period}"
+			#when "update_cumulatives"
+				#sim.aggregates['cumulative_cash_flow'][period+1] = sim.aggregates['cumulative_cash_flow'][period]
+				#puts "copied a cum value of #{sim.aggregates['cumulative_cash_flow'][period]}" 
 		  else raise "unsupported warehouse event"
+		end
+	end
 
+	def calc_cumulatives(sim)
+		#sim.aggregates['cumulative_cash_flow'][0]=0
+		sim.simulation_periods.times do |period|
+			period += 1
+			if period == 1
+				#debugger
+				#TODO recalibrate so that everything works from period 1 and ignores the 0 position of arrays.
+			end 
+			sim.aggregates['cumulative_cash_flow'][period] = truncate( sim.aggregates['cumulative_cash_flow'][period-1] + sim.aggregates['period_cash_flow'][period])
 
 		end
 
