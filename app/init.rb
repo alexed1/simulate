@@ -30,6 +30,7 @@ end
 #load list comes in from the yaml as an array of arrays
 #the first value of each array is the period that particular packet of actors start their leases
 def init_actors(load_list, simulation)
+  actors = []
   load_list.each { |period_list|
     period = period_list.shift
     #start a counter to generate ids
@@ -42,12 +43,13 @@ def init_actors(load_list, simulation)
       actor_profile = $PROFILES.select {|k,v|
         k == actor
       }
-      actor_obj = Actor.new(actor_profile[actor], actor_id, simulation, period)
+      actors <<  Actor.new(actor_profile[actor], actor_id, simulation, period)
      
 
     }
 
   }
+  return actors
 
 end
 
@@ -58,6 +60,7 @@ end
 def init_simulations
   #load all the simulations
   simulations = []
+  actors = []
   Dir.foreach('../simulations') do |item|
     next if item == '.' or item == '..'
     simulation = YAML.load_file('../simulations/' + item)
@@ -66,6 +69,7 @@ def init_simulations
     actors = init_actors(simulation['load_list'], sim_obj)
     simulations << sim_obj
   end
+  return actors, simulations
   #puts simulations.inspect
 end
 

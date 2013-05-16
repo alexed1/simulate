@@ -1,7 +1,7 @@
 class Actor
 	include ::Simulate::Common
 
-	attr_accessor :id, :start_period, :theft_occurs, :payment_count, :lease_price, :name, :monthly_payment
+	attr_accessor :id, :start_period, :theft_occurs, :payment_count, :lease_price, :name, :monthly_payment, :cash_flows
 
 	def initialize(params, id, simulation, period)
  		@id = id
@@ -12,13 +12,13 @@ class Actor
  		@lease_price = params["average_item_price"].to_f
  		@name = params["name"]
  		@monthly_payment = calc_monthly_payment(simulation)
- 		@payments = {}
- 	
- 		output_row = calc_cash_flows(simulation)
- 		puts "theft is #{theft_occurs}"
- 		puts "payment count is #{payment_count}"
- 		puts "cash flows are:"
- 		puts output_row
+ 		#@payments = {}
+ 		@cash_flows = calc_cash_flows(simulation)
+ 		
+ 		#puts "theft is #{theft_occurs}"
+ 		#puts "payment count is #{payment_count}"
+ 		#puts "cash flows are:"
+ 		#puts @cash_flows
 	end 
 
 	def calc_monthly_payment (simulation)
@@ -53,48 +53,71 @@ class Actor
 
 
 #TODO verify residual is working and that zeroes are filled in properly.
-	def calc_cash_flows(simulation)
+	def calc_cash_flows(sim)
 		debug("calc'ing cash flows for actor #{self.name}")
-		row_output = ""
+		cash_flows = []
 		i = 1
 	
 
-		simulation.simulation_periods.times do |period|
+		sim.simulation_periods.times do |period|
 			period +=1
 			cur_flow = 0
 			
 			if @start_period > period
 				#actor hasn't executed their lease yet
-				@payments[period] = 0
 			
 			elsif period >= (@start_period + @payment_count)
 				#actor lease is complete
-				@payments[period] = 0
 			
 			else
 				#there's an actual payment to be calculated
 				cur_flow = @monthly_payment
+				update_warehouse("payments_received", @monthly_payment, sim, period )
+
 				if period == @start_period
 					#this is the first period of the lease, so subtract the total lease price to represent our outlay
 					cur_flow -= @lease_price
+					update_warehouse("capital_deployed", @lease_price, sim, period )
+			
 				end
 				if period == @start_period + @payment_count - 1
-					#this is the last period of the lease, add in residual value if appropriate
-					if !@theft_occurs
+					#this is the last payment we're getting. Add in residual value if no theft and no ownership change
+					if !@theft_occurs && @payment_count < 12
 						debug("adding residual value back in")
+						residual_val = sim.residual_value* 0.01 * @lease_price
 						#if payment count is less than 3 we override the theft calc and assume theft is true, because we don't allow returns for less than 3 periods.
-						cur_flow += simulation.residual_value* 0.01 * @lease_price unless @payment_count <3
+						if @payment_count >= 3
+							cur_flow += residual_val  
+							update_warehouse("residual_value_tangible", residual_val, sim, period )
+						end
 					end
 				end
 			end
-
-
-			row_output = row_output + truncate(cur_flow).to_s + "\t"
-			@payments[period] = cur_flow
-			
+			cash_flows << truncate(cur_flow).to_s + "\t"
+			#@payments[period] = cur_flow	
 		end
-		return row_output
+		return cash_flows
+	end
 
+
+	def update_warehouse(event, amount, sim, period)
+		case event
+		  when "payments_received" 
+				#add amount this to the total payments received this period
+				sim.aggregates['payments_received'][period] += amount
+				sim.aggregates['period_cash_flow'][period] += amount
+		  when "capital_deployed"  
+				#add this to the total capital deployed this period
+				sim.aggregates['capital_deployed'][period] += amount
+				sim.aggregates['period_cash_flow'][period] -= amount
+		  when "residual_value_tangible" 
+				#add this to the total capital deployed this period
+				sim.aggregates['residual_value_tangible'][period] += amount
+				sim.aggregates['period_cash_flow'][period] += amount
+		  else raise "unsupported warehouse event"
+
+
+		end
 
 	end
 
