@@ -15,7 +15,7 @@ class Simulation
 
 	def print(actors)
 		header_row = []
-		header_row << "Period" << "ID"
+		header_row << "Period" << "ID" << "Net Profit"
 		@simulation_periods.times do |period|
 			header_row << (period+1).to_s
 		end
@@ -27,7 +27,7 @@ class Simulation
 
 			actors.each { |actor|
 				row = []
-				row << actor.name << actor.id
+				row << actor.name << actor.id << actor.calc_profit
 				row = row + actor.cash_flows
 				csv << row
 			}
@@ -36,7 +36,7 @@ class Simulation
 			csv << ["ANALYSIS"]
 			@aggregates.each { |k,v|
 				row = []
-				row << k << ""   #the key serves as the row label
+				row << k << "" << "" #the key serves as the row label
 				v.shift  #remove the empty zero index
 				row = row + v
 				csv << row
@@ -50,7 +50,7 @@ class Simulation
 	#aggregates tracks different aggregated data like total capital invested
 	def init_aggregates
 		store = {}
-		types = ["capital_deployed","payments_received","residual_value_tangible","writeoffs", "period_cash_flow", "cumulative_cash_flow"]
+		types = ["capital_deployed","payments_received","residual_value_tangible","writeoffs", "period_cash_flow", "cumulative_cash_flow", "cumulative_capital_in", "ROI"]
 		types.each { |aggregate|
 			store[aggregate] = []
 			store[aggregate][0] = 0

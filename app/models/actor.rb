@@ -74,7 +74,7 @@ class Actor
 				end
 
 				#next, the basic monthly payment, which flows in to the company
-				cur_flow = @monthly_payment
+				cur_flow += @monthly_payment
 				update_warehouse("payments_received", @monthly_payment, sim, period )
 
 				#finally, if this is the end of the payments on this lease, either because the lessee took ownership, or because they stopped
@@ -93,7 +93,7 @@ class Actor
 				end
 
 			end
-			cash_flows << truncate(cur_flow).to_s + "\t"
+			cash_flows << truncate(cur_flow).to_s
 		end
 		calc_cumulatives(sim)
 
@@ -114,6 +114,7 @@ class Actor
 				#add this to the total capital deployed this period
 				sim.aggregates['capital_deployed'][period] += amount
 				sim.aggregates['period_cash_flow'][period] -= amount
+				sim.aggregates['cumulative_capital_in'][period] += amount
 		  
 		  when "residual_value_tangible" 
 				#add this to the total capital deployed this period
@@ -129,7 +130,16 @@ class Actor
 		sim.simulation_periods.times do |period|
 			period += 1  #all array operations ignore index 0 to match things up nicely with the periods
 			sim.aggregates['cumulative_cash_flow'][period] = truncate( sim.aggregates['cumulative_cash_flow'][period-1] + sim.aggregates['period_cash_flow'][period])
+			sim.aggregates['cumulative_capital_in'][period] = truncate( sim.aggregates['cumulative_capital_in'][period-1] + sim.aggregates['capital_deployed'][period])
+			sim.aggregates['ROI'][period] = truncate( sim.aggregates['cumulative_cash_flow'][period]/sim.aggregates['cumulative_capital_in'][period])		
 		end
+
+	end
+
+	def calc_profit
+		cash_flows.inject(0) { |sum, flow|
+			sum += flow.to_i
+		}
 
 	end
 
